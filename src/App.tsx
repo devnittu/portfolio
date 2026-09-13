@@ -20,6 +20,15 @@ const icon = (name: string) =>
     <b>{name}</b>
   );
 const ext = (url: string) => (url.startsWith("mailto:") ? undefined : "_blank");
+const errorMessage = (error: unknown) => {
+  if (error && typeof error === "object") {
+    const details = error as { message?: string; details?: string; hint?: string; code?: string };
+    return [details.message, details.details, details.hint, details.code]
+      .filter(Boolean)
+      .join(" | ");
+  }
+  return String(error || "Unknown error");
+};
 export default function App() {
   const [site, setSite] = useState<Site>(get);
   const [remoteReady, setRemoteReady] = useState(!supabaseConfigured);
@@ -329,7 +338,7 @@ function Admin({ site, setSite }: { site: Site; setSite: (s: Site) => void }) {
       setSite(draft);
       alert(supabaseConfigured ? "Saved permanently for all visitors." : "Saved in this browser. Add Supabase variables for permanent storage.");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown Supabase error";
+      const message = errorMessage(error);
       alert(`Unable to save: ${message}`);
     } finally {
       setSaving(false);
@@ -372,7 +381,8 @@ function Admin({ site, setSite }: { site: Site; setSite: (s: Site) => void }) {
     }
     setUploading(folder);
     try {
-      const path = `${folder}/${crypto.randomUUID()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "-")}`;
+      const extension = file.name.includes(".") ? `.${file.name.split(".").pop()}` : "";
+      const path = `${folder}-${crypto.randomUUID()}${extension.toLowerCase()}`;
       const { error } = await supabase.storage.from("portfolio-assets").upload(path, file, {
         cacheControl: "3600",
         upsert: false,
@@ -381,7 +391,7 @@ function Admin({ site, setSite }: { site: Site; setSite: (s: Site) => void }) {
       const { data } = supabase.storage.from("portfolio-assets").getPublicUrl(path);
       onLoad(data.publicUrl);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown Supabase upload error";
+      const message = errorMessage(error);
       alert(`Upload failed: ${message}`);
     } finally {
       setUploading("");

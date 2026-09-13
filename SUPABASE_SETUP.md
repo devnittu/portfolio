@@ -9,6 +9,8 @@ This app uses Supabase for permanent portfolio content and file storage. Without
 3. For a one-time manual setup, you can paste [`supabase/schema.sql`](supabase/schema.sql) into **SQL Editor**.
 4. Open **Project Settings > API Keys** and copy the Project URL and **Publishable key**.
 
+After connecting the repository, confirm the migration has run successfully in Supabase. In **Table Editor**, you should see `portfolio_content`. In **Storage**, you should see a public bucket named `portfolio-assets`. If either is missing, run the complete migration file manually in **SQL Editor** once.
+
 ## Render environment variables
 
 Add these to the Render service before redeploying:
