@@ -5,8 +5,9 @@ This app uses Supabase for permanent portfolio content and file storage. Without
 ## Supabase
 
 1. Create a free Supabase project.
-2. Open **SQL Editor** and run [`supabase/schema.sql`](supabase/schema.sql).
-3. Open **Project Settings > API** and copy the Project URL and publishable anon key.
+2. For automatic repository deployments, use the `supabase/migrations/` folder. The migration in that folder creates the database table, policies, and asset bucket.
+3. For a one-time manual setup, you can paste [`supabase/schema.sql`](supabase/schema.sql) into **SQL Editor**.
+4. Open **Project Settings > API** and copy the Project URL and publishable anon key.
 
 ## Render environment variables
 
@@ -28,3 +29,12 @@ Use the publishable/anon key only. Never put the Supabase service-role key in a 
 Redeploy after adding or changing environment variables. Admin saves then update the `portfolio_content` row and become visible to every visitor. Resume PDFs and project images are uploaded to the `portfolio-assets` bucket and the database stores only their public URLs.
 
 The repository includes `render.yaml` with these settings. For an existing Render service, update the Build Command manually or recreate it from the Blueprint so Render installs the React, Vite, TypeScript, and Supabase packages before building.
+
+## Supabase GitHub integration
+
+- Repository: `devnittu/portfolio`
+- Working directory: `.`
+- Production branch: `main`
+- Enable **Deploy to production**.
+
+Supabase will apply new files in `supabase/migrations/` when changes are merged into `main`. Do not use the PostgreSQL connection string in the frontend.
