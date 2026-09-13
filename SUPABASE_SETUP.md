@@ -7,7 +7,7 @@ This app uses Supabase for permanent portfolio content and file storage. Without
 1. Create a free Supabase project.
 2. For automatic repository deployments, use the `supabase/migrations/` folder. The migration in that folder creates the database table, policies, and asset bucket.
 3. For a one-time manual setup, you can paste [`supabase/schema.sql`](supabase/schema.sql) into **SQL Editor**.
-4. Open **Project Settings > API** and copy the Project URL and publishable anon key.
+4. Open **Project Settings > API Keys** and copy the Project URL and **Publishable key**.
 
 ## Render environment variables
 
@@ -16,10 +16,10 @@ Add these to the Render service before redeploying:
 ```text
 VITE_ADMIN_PASSWORD=your-admin-password
 VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_ANON_KEY=your-publishable-anon-key
+VITE_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
 ```
 
-Use the publishable/anon key only. Never put the Supabase service-role key in a `VITE_` variable.
+Use the **Publishable key**. If your project only shows the older **anon** key, `VITE_SUPABASE_ANON_KEY` also works. Never put the Secret or service-role key in a `VITE_` variable.
 
 ## Render
 
