@@ -31,7 +31,7 @@ export default function App() {
       .eq("id", "main")
       .maybeSingle()
       .then(
-        ({ data }) => {
+        ({ data }: { data: { content: Partial<Site> } | null }) => {
           if (data?.content && Object.keys(data.content).length > 0) {
             setSite(normalizeSite(data.content));
           }
