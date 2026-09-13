@@ -328,8 +328,9 @@ function Admin({ site, setSite }: { site: Site; setSite: (s: Site) => void }) {
       }
       setSite(draft);
       alert(supabaseConfigured ? "Saved permanently for all visitors." : "Saved in this browser. Add Supabase variables for permanent storage.");
-    } catch {
-      alert("Unable to save. Check your Supabase settings and try again.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown Supabase error";
+      alert(`Unable to save: ${message}`);
     } finally {
       setSaving(false);
     }
@@ -379,8 +380,9 @@ function Admin({ site, setSite }: { site: Site; setSite: (s: Site) => void }) {
       if (error) throw error;
       const { data } = supabase.storage.from("portfolio-assets").getPublicUrl(path);
       onLoad(data.publicUrl);
-    } catch {
-      alert("Upload failed. Check that the portfolio-assets bucket and policies are configured.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown Supabase upload error";
+      alert(`Upload failed: ${message}`);
     } finally {
       setUploading("");
     }

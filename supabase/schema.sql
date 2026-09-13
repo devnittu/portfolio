@@ -12,14 +12,17 @@ drop policy if exists "Admin app can update portfolio content" on public.portfol
 
 create policy "Public can read portfolio content"
 on public.portfolio_content for select
+to anon, authenticated
 using (id = 'main');
 
 create policy "Admin app can save portfolio content"
 on public.portfolio_content for insert
+to anon, authenticated
 with check (id = 'main');
 
 create policy "Admin app can update portfolio content"
 on public.portfolio_content for update
+to anon, authenticated
 using (id = 'main')
 with check (id = 'main');
 
@@ -33,10 +36,12 @@ on conflict (id) do update set public = true;
 
 create policy "Public can view portfolio assets"
 on storage.objects for select
+to anon, authenticated
 using (bucket_id = 'portfolio-assets');
 
 drop policy if exists "Admin app can upload portfolio assets" on storage.objects;
 
 create policy "Admin app can upload portfolio assets"
 on storage.objects for insert
+to anon, authenticated
 with check (bucket_id = 'portfolio-assets');
