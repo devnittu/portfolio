@@ -22,7 +22,9 @@ Use the publishable/anon key only. Never put the Supabase service-role key in a 
 
 ## Render
 
-- Build command: `npm run build`
+- Build command: `npm ci --include=dev && npm run build`
 - Start command: `npm start`
 
 Redeploy after adding or changing environment variables. Admin saves then update the `portfolio_content` row and become visible to every visitor. Resume PDFs and project images are uploaded to the `portfolio-assets` bucket and the database stores only their public URLs.
+
+The repository includes `render.yaml` with these settings. For an existing Render service, update the Build Command manually or recreate it from the Blueprint so Render installs the React, Vite, TypeScript, and Supabase packages before building.
