@@ -1,27 +1,12 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { starter, type Capability, type Project, type Site } from "./data";
+import { supabase, supabaseConfigured } from "./supabase";
 const STORE = "nitin-portfolio-v2";
 const get = (): Site => {
   try {
     const saved = JSON.parse(localStorage.getItem(STORE) || "null");
     if (!saved || typeof saved !== "object") return starter;
-    const capabilities =
-      Array.isArray(saved.capabilities) &&
-      saved.capabilities.some((item: { name?: string }) => item.name === "Databases")
-        ? saved.capabilities
-        : starter.capabilities;
-    return {
-      ...starter,
-      ...saved,
-      resume: saved.resume === "#" ? "" : saved.resume,
-      projects: Array.isArray(saved.projects)
-        ? saved.projects.map((project: Partial<Project>) => ({
-            ...project,
-            image: typeof project.image === "string" ? project.image : "",
-          }))
-        : starter.projects,
-      capabilities,
-    };
+    return normalizeSite(saved);
   } catch {
     return starter;
   }
@@ -37,7 +22,26 @@ const icon = (name: string) =>
 const ext = (url: string) => (url.startsWith("mailto:") ? undefined : "_blank");
 export default function App() {
   const [site, setSite] = useState<Site>(get);
+  const [remoteReady, setRemoteReady] = useState(!supabaseConfigured);
   useEffect(() => {
+    if (!supabase) return;
+    supabase
+      .from("portfolio_content")
+      .select("content")
+      .eq("id", "main")
+      .maybeSingle()
+      .then(
+        ({ data }) => {
+          if (data?.content && Object.keys(data.content).length > 0) {
+            setSite(normalizeSite(data.content));
+          }
+          setRemoteReady(true);
+        },
+        () => setRemoteReady(true),
+      );
+  }, []);
+  useEffect(() => {
+    if (!remoteReady) return;
     try {
       localStorage.setItem(STORE, JSON.stringify(site));
     } catch {
@@ -49,6 +53,24 @@ export default function App() {
   ) : (
     <Portfolio site={site} />
   );
+}
+function normalizeSite(value: Partial<Site>): Site {
+  return {
+    ...starter,
+    ...value,
+    resume:
+      value.resume === "#" || value.resume?.startsWith("data:")
+        ? ""
+        : value.resume || "",
+    projects: Array.isArray(value.projects)
+      ? value.projects.map((project) => ({ ...project, image: project.image || "" }))
+      : starter.projects,
+    capabilities:
+      Array.isArray(value.capabilities) &&
+      value.capabilities.some((item) => item.name === "Databases")
+        ? value.capabilities
+        : starter.capabilities,
+  };
 }
 function Portfolio({ site }: { site: Site }) {
   return (
@@ -262,6 +284,8 @@ function Admin({ site, setSite }: { site: Site; setSite: (s: Site) => void }) {
   const [pass, setPass] = useState("");
   const [ok, setOk] = useState(sessionStorage.getItem("admin-v2") === "yes");
   const [draft, setDraft] = useState(site);
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState("");
   const update = (key: keyof Site, val: any) =>
     setDraft((d) => ({ ...d, [key]: val }));
   if (!ok)
@@ -289,14 +313,25 @@ function Admin({ site, setSite }: { site: Site; setSite: (s: Site) => void }) {
         <p>Set VITE_ADMIN_PASSWORD in your local .env file.</p>
       </main>
     );
-  const save = (e: FormEvent) => {
+  const save = async (e: FormEvent) => {
     e.preventDefault();
+    setSaving(true);
     try {
       localStorage.setItem(STORE, JSON.stringify(draft));
+      if (supabase) {
+        const { error } = await supabase.from("portfolio_content").upsert({
+          id: "main",
+          content: draft,
+          updated_at: new Date().toISOString(),
+        });
+        if (error) throw error;
+      }
       setSite(draft);
-      alert("Saved. Open / to view your updated portfolio.");
+      alert(supabaseConfigured ? "Saved permanently for all visitors." : "Saved in this browser. Add Supabase variables for permanent storage.");
     } catch {
-      alert("Unable to save in this browser. Check that site storage is enabled.");
+      alert("Unable to save. Check your Supabase settings and try again.");
+    } finally {
+      setSaving(false);
     }
   };
   const editProject = (i: number, key: keyof Project, v: string) =>
@@ -329,10 +364,26 @@ function Admin({ site, setSite }: { site: Site; setSite: (s: Site) => void }) {
       projects.splice(to, 0, project);
       return { ...d, projects };
     });
-  const readFile = (file: File, onLoad: (value: string) => void) => {
-    const reader = new FileReader();
-    reader.onload = () => onLoad(String(reader.result));
-    reader.readAsDataURL(file);
+  const uploadAsset = async (file: File, folder: string, onLoad: (value: string) => void) => {
+    if (!supabase) {
+      alert("Configure Supabase before uploading files permanently.");
+      return;
+    }
+    setUploading(folder);
+    try {
+      const path = `${folder}/${crypto.randomUUID()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "-")}`;
+      const { error } = await supabase.storage.from("portfolio-assets").upload(path, file, {
+        cacheControl: "3600",
+        upsert: false,
+      });
+      if (error) throw error;
+      const { data } = supabase.storage.from("portfolio-assets").getPublicUrl(path);
+      onLoad(data.publicUrl);
+    } catch {
+      alert("Upload failed. Check that the portfolio-assets bucket and policies are configured.");
+    } finally {
+      setUploading("");
+    }
   };
   const editCapability = (i: number, key: keyof Capability, value: string) =>
     setDraft((d) => {
@@ -376,7 +427,9 @@ function Admin({ site, setSite }: { site: Site; setSite: (s: Site) => void }) {
             <span>Admin / editor</span>
             <h1>Make it yours.</h1>
           </div>
-          <button className="save">Save changes</button>
+          <button className="save" disabled={saving}>
+            {saving ? "Saving..." : "Save changes"}
+          </button>
         </header>
         <fieldset id="profile">
           <legend>Profile & homepage</legend>
@@ -400,11 +453,11 @@ function Admin({ site, setSite }: { site: Site; setSite: (s: Site) => void }) {
               accept="application/pdf,.pdf"
               onChange={(e) => {
                 const file = e.target.files?.[0];
-                if (file) readFile(file, (value) => update("resume", value));
+                if (file) uploadAsset(file, "resume", (value) => update("resume", value));
               }}
             />
           </label>
-          <p>Use the URL field for a hosted resume or upload a PDF for this browser.</p>
+          <p>{uploading === "resume" ? "Uploading resume..." : "Use a hosted PDF URL or upload a PDF to Supabase Storage."}</p>
         </fieldset>
         <fieldset id="projects">
           <legend>Projects</legend>
@@ -459,7 +512,7 @@ function Admin({ site, setSite }: { site: Site; setSite: (s: Site) => void }) {
                   accept="image/*"
                   onChange={(e) => {
                     const file = e.target.files?.[0];
-                    if (file) readFile(file, (value) => editProject(i, "image", value));
+                    if (file) uploadAsset(file, `project-${i + 1}`, (value) => editProject(i, "image", value));
                   }}
                 />
               </label>
