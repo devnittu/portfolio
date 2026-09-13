@@ -23,6 +23,8 @@ VITE_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
 
 Use the **Publishable key**. If your project only shows the older **anon** key, `VITE_SUPABASE_ANON_KEY` also works. Never put the Secret or service-role key in a `VITE_` variable.
 
+`VITE_SUPABASE_URL` must be only the base Project URL, for example `https://abcdefghijklmnop.supabase.co`. Do not paste the dashboard URL, database connection string, or a URL ending in `/rest/v1`.
+
 ## Render
 
 - Build command: `npm ci --include=dev && npm run build`
